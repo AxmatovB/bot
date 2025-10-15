@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moliyaviy Statistika</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-align: center;
+        }
+        
+        .balance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .balance-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .balance-amount {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .status {
+            font-size: 16px;
+            margin-top: 10px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-value.income {
+            color: #10b981;
+        }
+        
+        .stat-value.expense {
+            color: #ef4444;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .transactions {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .transaction-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+        
+        .transaction-info {
+            flex: 1;
+        }
+        
+        .transaction-category {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .transaction-date {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .transaction-amount {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .transaction-amount.income {
+            color: #10b981;
+        }
+        
+        .transaction-amount.expense {
+            color: #ef4444;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">📊 Yuklanmoqda...</div>
+        <div id="content" style="display: none;">
+            <div class="header">
+                <h1>💰 Moliyaviy Hisobot</h1>
+            </div>
+            
+            <div class="balance-card">
+                <div class="balance-label">Joriy Balans</div>
+                <div class="balance-amount" id="balance">0 so'm</div>
+                <div class="status" id="status">📊 Tahlil qilinmoqda...</div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">💰 Jami Daromad</div>
+                    <div class="stat-value income" id="totalIncome">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">💸 Jami Xarajat</div>
+                    <div class="stat-value expense" id="totalExpense">0</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📊 Xarajatlar Taqsimoti</div>
+                <canvas id="pieChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📈 Daromad va Xarajat Tendentsiyasi</div>
+                <canvas id="lineChart"></canvas>
+            </div>
+            
+            <div class="transactions">
+                <div class="chart-title">📋 Oxirgi Operatsiyalar</div>
+                <div id="transactionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Mock data - bu yerda backend dan ma'lumot kelishi kerak
+        const userData = {
+            income: [
+                {amount: 2000000, category: 'maosh', description: 'Iyul maoshi', date: '2024-10-01 10:00:00'},
+                {amount: 500000, category: 'biznes', description: 'Qo\'shimcha ish', date: '2024-10-10 14:30:00'},
+                {amount: 300000, category: 'sovg\'a', description: 'Tug\'ilgan kun', date: '2024-10-12 18:00:00'}
+            ],
+            expense: [
+                {amount: 600000, category: 'oziq-ovqat', description: 'Oy uchun', date: '2024-10-02 09:00:00'},
+                {amount: 200000, category: 'transport', description: 'Benzin', date: '2024-10-05 16:00:00'},
+                {amount: 150000, category: 'o\'yin-kulgi', description: 'Kino', date: '2024-10-08 20:00:00'},
+                {amount: 400000, category: 'uy-joy', description: 'Kommunal', date: '2024-10-11 11:00:00'},
+                {amount: 100000, category: 'kiyim', description: 'Ko\'ylak', date: '2024-10-13 15:00:00'}
+            ]
+        };
+        
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+        
+        function loadData() {
+            const totalIncome = userData.income.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpense = userData.expense.reduce((sum, item) => sum + item.amount, 0);
+            const balance = totalIncome - totalExpense;
+            
+            document.getElementById('balance').textContent = formatNumber(balance) + ' so\'m';
+            document.getElementById('totalIncome').textContent = formatNumber(totalIncome);
+            document.getElementById('totalExpense').textContent = formatNumber(totalExpense);
+            
+            // Status
+            let status = '';
+            if (balance > totalIncome * 0.5) {
+                status = "🟢 A'lo! Yaxshi tejayapsiz!";
+            } else if (balance > totalIncome * 0.2) {
+                status = "🟡 Yaxshi holat";
+            } else if (balance > 0) {
+                status = "🟠 Ehtiyot bo'ling!";
+            } else {
+                status = "🔴 Xavfli holat!";
+            }
+            document.getElementById('status').textContent = status;
+            
+            // Pie Chart
+            const expenseByCategory = {};
+            userData.expense.forEach(item => {
+                expenseByCategory[item.category] = (expenseByCategory[item.category] || 0) + item.amount;
+            });
+            
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(expenseByCategory),
+                    datasets: [{
+                        data: Object.values(expenseByCategory),
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#4facfe',
+                            '#43e97b',
+                            '#fa709a',
+                            '#fee140',
+                            '#30cfd0'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Line Chart
+            const allDates = [...userData.income, ...userData.expense]
+                .map(item => item.date.split(' ')[0])
+                .filter((v, i, a) => a.indexOf(v) === i)
+                .sort();
+            
+            const incomeByDate = {};
+            const expenseByDate = {};
+            
+            userData.income.forEach(item => {
+                const date = item.date.split(' ')[0];
+                incomeByDate[date] = (incomeByDate[date] || 0) + item.amount;
+            });
+            
+            userData.expense.forEach(item => {
+                const date = item.date.split(' ')[0];
+                expenseByDate[date] = (expenseByDate[date] || 0) + item.amount;
+            });
+            
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: allDates,
+                    datasets: [
+                        {
+                            label: 'Daromad',
+                            data: allDates.map(date => incomeByDate[date] || 0),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Xarajat',
+                            data: allDates.map(date => expenseByDate[date] || 0),
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Transactions list
+            const allTransactions = [
+                ...userData.income.map(item => ({...item, type: 'income'})),
+                ...userData.expense.map(item => ({...item, type: 'expense'}))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            const transactionsList = document.getElementById('transactionsList');
+            allTransactions.slice(0, 10).forEach(transaction => {
+                const item = document.createElement('div');
+                item.className = 'transaction-item';
+                item.innerHTML = `
+                    <div class="transaction-info">
+                        <div class="transaction-category">${transaction.type === 'income' ? '💰' : '💸'} ${transaction.category}</div>
+                        <div class="transaction-date">${transaction.date}</div>
+                    </div>
+                    <div class="transaction-amount ${transaction.type}">
+                        ${transaction.type === 'income' ? '+' : '-'}${formatNumber(transaction.amount)}
+                    </div>
+                `;
+                transactionsList.appendChild(item);
+            });
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+        
+        loadData();
+    </script>
+</body>
+</html>
